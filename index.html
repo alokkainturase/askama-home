@@ -1745,6 +1745,23 @@
         grid-template-columns: 1fr;
       }
     }
+
+    /* ─── LOADER ─── */
+    .spinner {
+      display: inline-block;
+      width: 1rem;
+      height: 1rem;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      border-top-color: #fff;
+      animation: spin 0.8s linear infinite;
+      margin-right: 0.5rem;
+      vertical-align: middle;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
   </style>
 </head>
 
@@ -2532,54 +2549,93 @@
       el.className = 'form-msg ' + type;
     }
 
-    function submitDemo() {
+    async function submitDemo() {
       const d = getFormData();
       const err = validateForm(d);
       if (err) { showMsg(err, 'error'); return; }
 
-      const subject = encodeURIComponent('AMA Demo Request — ' + d.company);
-      const body = encodeURIComponent(
-        'Name: ' + d.name + '\n' +
-        'Company: ' + d.company + '\n' +
-        'Email: ' + d.email + '\n' +
-        'Phone: ' + d.phone + '\n\n' +
-        'This person has requested a free demo via the AMA website.'
-      );
-      window.location.href = 'mailto:contact@askama.io?subject=' + subject + '&body=' + body;
-      showMsg('✓ Your email client is opening. We look forward to connecting!', 'success');
+      const btn = document.querySelector('.btn-demo');
+      const originalHtml = btn.innerHTML;
+      btn.innerHTML = '<span class="spinner"></span> Sending...';
+      btn.disabled = true;
+
+      showMsg('Sending request...', '');
+
+      try {
+        const response = await fetch("https://formsubmit.co/ajax/contact@askama.io", {
+          method: "POST",
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify({
+            _subject: "AMA Demo Request — " + d.company,
+            Name: d.name,
+            Company: d.company,
+            Email: d.email,
+            Phone: d.phone,
+            Message: "This person has requested a free demo via the AMA website."
+          })
+        });
+
+        if (response.ok) {
+          showMsg('✓ Demo request sent successfully! We look forward to connecting.', 'success');
+        } else {
+          showMsg('Failed to send request. Please try again later.', 'error');
+        }
+      } catch (error) {
+        showMsg('Network error. Please try again later.', 'error');
+      } finally {
+        btn.innerHTML = originalHtml;
+        btn.disabled = false;
+      }
     }
 
-    function downloadCatalogue() {
+    async function downloadCatalogue() {
       const d = getFormData();
       const err = validateForm(d);
       if (err) { showMsg(err, 'error'); return; }
 
-      // Also fire a mailto so the team knows who downloaded
-      const subject = encodeURIComponent('AMA Catalogue Download — ' + d.company);
-      const body = encodeURIComponent(
-        'Name: ' + d.name + '\n' +
-        'Company: ' + d.company + '\n' +
-        'Email: ' + d.email + '\n' +
-        'Phone: ' + d.phone + '\n\n' +
-        'This person downloaded the AMA catalogue via the website.'
-      );
-      // Open mail silently in background
-      const mailLink = document.createElement('a');
-      mailLink.href = 'mailto:contact@askama.io?subject=' + subject + '&body=' + body;
-      mailLink.style.display = 'none';
-      document.body.appendChild(mailLink);
-      mailLink.click();
-      document.body.removeChild(mailLink);
+      const btn = document.querySelector('.btn-download');
+      const originalHtml = btn.innerHTML;
+      btn.innerHTML = '<span class="spinner"></span> Processing...';
+      btn.disabled = true;
 
-      // Trigger PDF download from embedded base64
-      const link = document.createElement('a');
-      link.href = 'data:application/pdf;base64,' + AMA_PDF_B64;
-      link.download = 'AMA_Conversational_Analytics_Catalogue.pdf';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      showMsg('Processing request...', '');
 
-      showMsg('✓ Download started! We\'ll also be in touch shortly.', 'success');
+      try {
+        // Send notification to the team
+        await fetch("https://formsubmit.co/ajax/contact@askama.io", {
+          method: "POST",
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify({
+            _subject: "AMA Catalogue Download — " + d.company,
+            Name: d.name,
+            Company: d.company,
+            Email: d.email,
+            Phone: d.phone,
+            Message: "This person downloaded the AMA catalogue via the website."
+          })
+        });
+
+        // Trigger PDF download from embedded base64
+        const link = document.createElement('a');
+        link.href = 'data:application/pdf;base64,' + AMA_PDF_B64;
+        link.download = 'AMA_Conversational_Analytics_Catalogue.pdf';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        showMsg('✓ Download started! We\'ll also be in touch shortly.', 'success');
+      } catch (error) {
+        showMsg('Failed to process. Please try again.', 'error');
+      } finally {
+        btn.innerHTML = originalHtml;
+        btn.disabled = false;
+      }
     }
 
     function scrollToSection(id) {
